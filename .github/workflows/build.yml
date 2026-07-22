@@ -32,7 +32,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon
+        run: ./gradlew clean build --no-daemon --refresh-dependencies
 
       - name: Locate build artifact
         id: artifact
