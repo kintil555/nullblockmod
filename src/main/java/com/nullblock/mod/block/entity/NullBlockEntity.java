@@ -6,10 +6,10 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -66,9 +66,9 @@ public class NullBlockEntity extends BlockEntity {
         super.loadAdditional(tag, registries);
         if (tag.contains("DisguiseBlock")) {
             ResourceLocation id = ResourceLocation.parse(tag.getString("DisguiseBlock"));
-            if (BuiltInRegistries.BLOCK.containsKey(id)) {
-                disguiseState = BuiltInRegistries.BLOCK.get(id).defaultBlockState();
-            }
+            disguiseState = BuiltInRegistries.BLOCK.getOptional(id)
+                    .map(net.minecraft.world.level.block.Block::defaultBlockState)
+                    .orElse(null);
         } else {
             disguiseState = null;
         }
@@ -84,6 +84,6 @@ public class NullBlockEntity extends BlockEntity {
     @Override
     @Nullable
     public Packet<ClientGamePacketListener> getUpdatePacket() {
-        return NetworkHooks.getBlockEntityRenderDataPacket(this);
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 }
