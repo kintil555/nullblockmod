@@ -6,7 +6,6 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,9 +26,7 @@ public class NullBlockMod {
     public static final String MODID = "nullblock";
     public static final Logger LOGGER = LoggerFactory.getLogger(NullBlockMod.class);
 
-    public NullBlockMod() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
-
+    public NullBlockMod(IEventBus modEventBus) {
         ModBlocks.BLOCKS.register(modEventBus);
         ModBlocks.ITEMS.register(modEventBus);
         ModBlockEntities.BLOCK_ENTITIES.register(modEventBus);
