@@ -1,0 +1,29 @@
+modLoader = "javafml"
+loaderVersion = "[2,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/yourname/nullblock/issues"
+
+[[mods]]
+modId = "nullblock"
+version = "${file.jarVersion}"
+displayName = "Null Block"
+description = '''
+A passthrough block that can visually disguise itself as any other block
+while remaining fully non-solid. Designed to be usable as a library
+dependency by other mods (see NullBlockAPI).
+'''
+authors = "You"
+
+[[dependencies.nullblock]]
+    modId = "forge"
+    mandatory = true
+    versionRange = "[54.1,)"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.nullblock]]
+    modId = "minecraft"
+    mandatory = true
+    versionRange = "[1.21.4,1.21.5)"
+    ordering = "NONE"
+    side = "BOTH"

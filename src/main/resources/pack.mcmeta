@@ -1,0 +1,8 @@
+{
+  "pack": {
+    "description": "Null Block resources",
+    "pack_format": 46,
+    "forge:resource_pack_format": 46,
+    "forge:data_pack_format": 61
+  }
+}

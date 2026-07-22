@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "nullblock:block/null_block" }
+  }
+}
