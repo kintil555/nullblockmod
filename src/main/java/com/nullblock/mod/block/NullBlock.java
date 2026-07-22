@@ -2,7 +2,6 @@ package com.nullblock.mod.block;
 
 import com.nullblock.mod.block.entity.NullBlockEntity;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -115,15 +114,15 @@ public class NullBlock extends Block implements EntityBlock {
     // ------------------------------------------------------------------
 
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
-                                               Player player, InteractionHand hand, BlockHitResult hitResult) {
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                           Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (!(stack.getItem() instanceof net.minecraft.world.item.BlockItem blockItem)) {
-            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+            return InteractionResult.PASS;
         }
 
         BlockEntity be = level.getBlockEntity(pos);
         if (!(be instanceof NullBlockEntity nullBe)) {
-            return ItemInteractionResult.FAIL;
+            return InteractionResult.FAIL;
         }
 
         BlockState disguise = blockItem.getBlock().defaultBlockState();
@@ -134,7 +133,7 @@ public class NullBlock extends Block implements EntityBlock {
                 stack.shrink(1);
             }
         }
-        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        return level.isClientSide ? InteractionResult.SUCCESS : InteractionResult.SUCCESS_SERVER;
     }
 
     @Override
@@ -147,7 +146,7 @@ public class NullBlock extends Block implements EntityBlock {
                     nullBe.setDisguiseState(null);
                 }
             }
-            return InteractionResult.sidedSuccess(level.isClientSide);
+            return level.isClientSide ? InteractionResult.SUCCESS : InteractionResult.SUCCESS_SERVER;
         }
         return InteractionResult.PASS;
     }
