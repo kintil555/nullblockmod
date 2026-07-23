@@ -55,7 +55,7 @@ public class NullBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public int getLightEmission(BlockState state) {
+    public int getLightEmission(BlockState state, BlockGetter level, BlockPos pos) {
         return state.getValue(LIGHT_LEVEL);
     }
 
