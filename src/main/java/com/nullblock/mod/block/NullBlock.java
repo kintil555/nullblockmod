@@ -88,12 +88,6 @@ public class NullBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public net.minecraftforge.client.extensions.common.IClientBlockExtensions getRenderTypeHint() {
-        return net.minecraftforge.client.extensions.common.IClientBlockExtensions.of(
-                net.minecraft.client.renderer.RenderType.cutout());
-    }
-
-    @Override
     public boolean skipRendering(BlockState state, BlockState adjacentState, net.minecraft.core.Direction direction) {
         return false;
     }
