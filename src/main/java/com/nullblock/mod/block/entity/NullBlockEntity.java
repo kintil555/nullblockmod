@@ -45,7 +45,17 @@ public class NullBlockEntity extends BlockEntity {
         this.disguiseState = state;
         setChanged();
         if (level != null) {
-            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            // Mirror the disguise's light emission onto our own BlockState's
+            // LIGHT_LEVEL property, then force the light engine to recheck
+            // this position so torches/frog lights/etc. placed as a disguise
+            // actually light up the world, not just look lit.
+            int lightValue = state != null
+                    ? state.getLightEmission(level, worldPosition)
+                    : 0;
+            BlockState newState = getBlockState().setValue(com.nullblock.mod.block.NullBlock.LIGHT_LEVEL, lightValue);
+            level.setBlock(worldPosition, newState, 3);
+            level.getLightEngine().checkBlock(worldPosition);
+            level.sendBlockUpdated(worldPosition, newState, newState, 3);
         }
     }
 
