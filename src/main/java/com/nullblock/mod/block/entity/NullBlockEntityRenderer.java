@@ -32,30 +32,56 @@ public class NullBlockEntityRenderer implements BlockEntityRenderer<NullBlockEnt
     @Override
     public void render(NullBlockEntity blockEntity, float partialTick, PoseStack poseStack,
                         MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        if (blockEntity.getLevel() == null) {
+            return;
+        }
+
         BlockState disguise = blockEntity.getDisguiseState();
-        if (disguise == null || blockEntity.getLevel() == null || disguise.getRenderShape() != RenderShape.MODEL) {
+        BlockState stateToRender;
+
+        if (disguise != null && disguise.getRenderShape() == RenderShape.MODEL) {
+            // Has a disguise: render the disguise's own appearance.
+            stateToRender = disguise;
+        } else if (disguise == null) {
+            // No disguise set: fall back to rendering the null block's OWN
+            // model (the "X" placeholder texture) as an in-world indicator,
+            // instead of staying fully invisible. This model is normally
+            // skipped in-world because NullBlock#getRenderShape() reports
+            // INVISIBLE (so vanilla doesn't double-render it); we render it
+            // here manually via the BER, using the block's own default state
+            // rather than the disguise.
+            stateToRender = com.nullblock.mod.block.ModBlocks.NULL_BLOCK.get().defaultBlockState();
+        } else {
+            // Disguise exists but isn't a normal model-rendered block
+            // (e.g. air, or something with its own special renderer) —
+            // nothing sensible to draw.
             return;
         }
 
         BlockRenderDispatcher dispatcher = Minecraft.getInstance().getBlockRenderer();
-        BakedModel model = dispatcher.getBlockModel(disguise);
+        BakedModel model = disguise != null
+                ? dispatcher.getBlockModel(stateToRender)
+                : dispatcher.getBlockModelShaper().getModelManager()
+                        .getModel(new net.minecraft.client.resources.model.ModelResourceLocation(
+                                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("nullblock", "null_block"),
+                                "inventory"));
 
         poseStack.pushPose();
         // Render using the REAL level/pos so biome color (tint) and AO are
         // sampled from actual neighbors, not a detached fake context. This
         // gives correct grass tint per biome and correct AO shading against
         // surrounding blocks.
-        for (RenderType type : model.getRenderTypes(disguise, blockEntity.getLevel().random, net.minecraftforge.client.model.data.ModelData.EMPTY)) {
+        for (RenderType type : model.getRenderTypes(stateToRender, blockEntity.getLevel().random, net.minecraftforge.client.model.data.ModelData.EMPTY)) {
             dispatcher.getModelRenderer().tesselateBlock(
                     blockEntity.getLevel(),
                     model,
-                    disguise,
+                    stateToRender,
                     blockEntity.getBlockPos(),
                     poseStack,
                     bufferSource.getBuffer(type),
                     true,
                     net.minecraft.util.RandomSource.create(),
-                    disguise.getSeed(blockEntity.getBlockPos()),
+                    stateToRender.getSeed(blockEntity.getBlockPos()),
                     packedOverlay
             );
         }

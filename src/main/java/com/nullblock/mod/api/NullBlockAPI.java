@@ -61,10 +61,43 @@ public final class NullBlockAPI {
      * Convenience overload: replaces whatever block currently occupies {@code pos}
      * with a null block disguised as that same original block. Useful for mods that
      * want to make an existing structure passable without changing its appearance.
+     *
+     * Note: this overload only preserves the original block's TYPE, not its exact
+     * BlockState properties (e.g. a grass block that had snow/moisture variants
+     * would revert to that block's default state). Use {@link #makePassablePreserveState}
+     * if you need the exact original state preserved.
      */
     public static void makePassable(LevelAccessor level, BlockPos pos) {
         BlockState original = level.getBlockState(pos);
         placeNullBlock(level, pos, original.getBlock(), true);
+    }
+
+    /**
+     * Same as {@link #placeNullBlock} but takes a full BlockState for the disguise
+     * instead of just a Block, so block-specific properties (facing, variant, etc.)
+     * are preserved exactly rather than reset to the disguise block's default state.
+     */
+    public static void placeNullBlockWithState(LevelAccessor level, BlockPos pos,
+                                                @Nullable BlockState disguiseState, boolean notifyNeighbors) {
+        BlockState state = block().defaultBlockState();
+        int flags = notifyNeighbors ? 3 : 2;
+        level.setBlock(pos, state, flags);
+
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof NullBlockEntity nullBe && disguiseState != null) {
+            nullBe.setDisguiseState(disguiseState);
+        }
+    }
+
+    /**
+     * Like {@link #makePassable}, but preserves the exact original BlockState
+     * (all block properties), not just the block type. Recommended for mods that
+     * want to swap out surface blocks (e.g. every grass block in a region) for a
+     * passable null-block disguise without altering their visual variant/state.
+     */
+    public static void makePassablePreserveState(LevelAccessor level, BlockPos pos) {
+        BlockState original = level.getBlockState(pos);
+        placeNullBlockWithState(level, pos, original, true);
     }
 
     /**
