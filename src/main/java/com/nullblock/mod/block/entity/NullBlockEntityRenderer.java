@@ -59,12 +59,13 @@ public class NullBlockEntityRenderer implements BlockEntityRenderer<NullBlockEnt
         }
 
         BlockRenderDispatcher dispatcher = Minecraft.getInstance().getBlockRenderer();
-        BakedModel model = disguise != null
-                ? dispatcher.getBlockModel(stateToRender)
-                : dispatcher.getBlockModelShaper().getModelManager()
-                        .getModel(new net.minecraft.client.resources.model.ModelResourceLocation(
-                                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("nullblock", "null_block"),
-                                "inventory"));
+        // getBlockModel() resolves via BlockModelShaper#stateToModelLocation,
+        // which maps a BlockState to its BLOCKSTATE-variant model (matching
+        // blockstates/null_block.json's variant key), not the item/inventory
+        // model. Using ModelResourceLocation(..., "inventory") here previously
+        // pointed at a variant that was never registered for a block model,
+        // which resolved to the missing-texture model (purple/black).
+        BakedModel model = dispatcher.getBlockModel(stateToRender);
 
         poseStack.pushPose();
         // Render using the REAL level/pos so biome color (tint) and AO are
