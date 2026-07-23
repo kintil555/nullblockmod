@@ -15,6 +15,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -35,8 +37,26 @@ import org.jetbrains.annotations.Nullable;
  */
 public class NullBlock extends Block implements EntityBlock {
 
+    // Mirrors the disguise block's light emission (0-15) as a BlockState
+    // property. getLightEmission(BlockState) in 1.21.4 only receives the
+    // state (no BlockEntity access), so the light level has to live on the
+    // state itself. NullBlockEntity keeps this in sync with the disguise
+    // whenever it changes (see setDisguiseState / the sync call below).
+    public static final IntegerProperty LIGHT_LEVEL = IntegerProperty.create("light_level", 0, 15);
+
     public NullBlock(Properties properties) {
         super(properties);
+        registerDefaultState(stateDefinition.any().setValue(LIGHT_LEVEL, 0));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(LIGHT_LEVEL);
+    }
+
+    @Override
+    public int getLightEmission(BlockState state) {
+        return state.getValue(LIGHT_LEVEL);
     }
 
     // ------------------------------------------------------------------
