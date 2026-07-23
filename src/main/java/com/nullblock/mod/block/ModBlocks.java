@@ -28,7 +28,6 @@ public class ModBlocks {
                             ResourceLocation.fromNamespaceAndPath(NullBlockMod.MODID, "null_block")))
                     .mapColor(MapColor.NONE)
                     .noCollission()
-                    .noOcclusion()
                     .strength(0.5f)
                     .sound(SoundType.GLASS)
                     .isValidSpawn((state, level, pos, entityType) -> false)
