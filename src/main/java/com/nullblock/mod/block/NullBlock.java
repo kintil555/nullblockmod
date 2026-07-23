@@ -4,7 +4,6 @@ import com.nullblock.mod.block.entity.NullBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
@@ -115,18 +114,25 @@ public class NullBlock extends Block implements EntityBlock {
     // ------------------------------------------------------------------
 
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
-                                               Player player, InteractionHand hand, BlockHitResult hitResult) {
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos,
+                                           Player player, InteractionHand hand, BlockHitResult hitResult) {
+        com.nullblock.mod.NullBlockMod.LOGGER.info("[NullBlock DEBUG] useItemOn called! item={}, clientSide={}",
+                stack.getItem(), level.isClientSide);
+
         if (!(stack.getItem() instanceof net.minecraft.world.item.BlockItem blockItem)) {
-            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+            com.nullblock.mod.NullBlockMod.LOGGER.info("[NullBlock DEBUG] Not a BlockItem, returning PASS");
+            return InteractionResult.PASS;
         }
 
         BlockEntity be = level.getBlockEntity(pos);
+        com.nullblock.mod.NullBlockMod.LOGGER.info("[NullBlock DEBUG] BlockEntity at pos={} is {}", pos, be);
         if (!(be instanceof NullBlockEntity nullBe)) {
-            return ItemInteractionResult.FAIL;
+            com.nullblock.mod.NullBlockMod.LOGGER.info("[NullBlock DEBUG] Not a NullBlockEntity, returning FAIL");
+            return InteractionResult.FAIL;
         }
 
         BlockState disguise = blockItem.getBlock().defaultBlockState();
+        com.nullblock.mod.NullBlockMod.LOGGER.info("[NullBlock DEBUG] Setting disguise to {}", disguise);
 
         if (!level.isClientSide) {
             nullBe.setDisguiseState(disguise);
@@ -134,7 +140,8 @@ public class NullBlock extends Block implements EntityBlock {
                 stack.shrink(1);
             }
         }
-        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        com.nullblock.mod.NullBlockMod.LOGGER.info("[NullBlock DEBUG] Returning SUCCESS");
+        return level.isClientSide ? InteractionResult.SUCCESS : InteractionResult.SUCCESS_SERVER;
     }
 
     @Override
