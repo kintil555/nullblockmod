@@ -2,9 +2,14 @@ package com.nullblock.mod.block.entity;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -14,13 +19,10 @@ import net.minecraft.world.level.block.state.BlockState;
  * the borrowed appearance on screen. Collision/interaction remain unaffected —
  * this is a pure visual layer.
  *
- * NOTE: this uses BlockRenderDispatcher#renderSingleBlock, which is the
- * simplest reliable way to render an arbitrary BlockState from a BER. It does
- * not compute ambient occlusion against real neighboring blocks (a known,
- * separate visual limitation — the disguise won't pick up AO shading from
- * adjacent blocks), but it reliably renders the disguise's texture/model,
- * which is the priority after the previous renderBatched attempt produced no
- * visible output at all.
+ * Uses BlockModelRenderer#tesselateBlock against the REAL BlockAndTintGetter
+ * and BlockPos of this block entity, so ambient occlusion is computed from
+ * actual neighboring blocks and biome tint (e.g. grass color) is sampled from
+ * this position's real biome — the disguise blends into its surroundings.
  */
 public class NullBlockEntityRenderer implements BlockEntityRenderer<NullBlockEntity> {
 
@@ -31,18 +33,32 @@ public class NullBlockEntityRenderer implements BlockEntityRenderer<NullBlockEnt
     public void render(NullBlockEntity blockEntity, float partialTick, PoseStack poseStack,
                         MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
         BlockState disguise = blockEntity.getDisguiseState();
-        if (disguise == null || blockEntity.getLevel() == null) {
+        if (disguise == null || blockEntity.getLevel() == null || disguise.getRenderShape() != RenderShape.MODEL) {
             return;
         }
 
+        BlockRenderDispatcher dispatcher = Minecraft.getInstance().getBlockRenderer();
+        BakedModel model = dispatcher.getBlockModel(disguise);
+
         poseStack.pushPose();
-        Minecraft.getInstance().getBlockRenderer().renderSingleBlock(
-                disguise,
-                poseStack,
-                bufferSource,
-                packedLight,
-                packedOverlay
-        );
+        // Render using the REAL level/pos so biome color (tint) and AO are
+        // sampled from actual neighbors, not a detached fake context. This
+        // gives correct grass tint per biome and correct AO shading against
+        // surrounding blocks.
+        for (RenderType type : model.getRenderTypes(disguise, blockEntity.getLevel().random, net.minecraftforge.client.model.data.ModelData.EMPTY)) {
+            dispatcher.getModelRenderer().tesselateBlock(
+                    blockEntity.getLevel(),
+                    model,
+                    disguise,
+                    blockEntity.getBlockPos(),
+                    poseStack,
+                    bufferSource.getBuffer(type),
+                    true,
+                    net.minecraft.util.RandomSource.create(),
+                    disguise.getSeed(blockEntity.getBlockPos()),
+                    packedOverlay
+            );
+        }
         poseStack.popPose();
     }
 
