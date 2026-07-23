@@ -1,6 +1,9 @@
 package com.nullblock.mod.block;
 
 import com.nullblock.mod.NullBlockMod;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -21,6 +24,8 @@ public class ModBlocks {
 
     public static final RegistryObject<Block> NULL_BLOCK = BLOCKS.register("null_block",
             () -> new NullBlock(BlockBehaviour.Properties.of()
+                    .setId(ResourceKey.create(Registries.BLOCK,
+                            ResourceLocation.fromNamespaceAndPath(NullBlockMod.MODID, "null_block")))
                     .mapColor(MapColor.NONE)
                     .noCollission()
                     .noOcclusion()
@@ -33,5 +38,8 @@ public class ModBlocks {
             ));
 
     public static final RegistryObject<Item> NULL_BLOCK_ITEM = ITEMS.register("null_block",
-            () -> new BlockItem(NULL_BLOCK.get(), new Item.Properties()));
+            () -> new BlockItem(NULL_BLOCK.get(), new Item.Properties()
+                    .setId(ResourceKey.create(Registries.ITEM,
+                            ResourceLocation.fromNamespaceAndPath(NullBlockMod.MODID, "null_block")))
+                    .useBlockDescriptionPrefix()));
 }
