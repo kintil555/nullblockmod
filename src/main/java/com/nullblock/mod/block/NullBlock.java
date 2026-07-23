@@ -92,6 +92,32 @@ public class NullBlock extends Block implements EntityBlock {
         return false;
     }
 
+    // Culling: report the disguise's own occlusion shape so neighboring
+    // blocks correctly cull faces against a NullBlock disguised as something
+    // solid (e.g. stone), while a disguise-less/non-solid disguise still
+    // reports empty (no false culling). This does not affect physics —
+    // getCollisionShape above is what remains permanently empty.
+    @Override
+    public VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof NullBlockEntity nullBe && nullBe.getDisguiseState() != null) {
+            BlockState disguise = nullBe.getDisguiseState();
+            return disguise.getOcclusionShape(level, pos);
+        }
+        return Shapes.empty();
+    }
+
+    // ------------------------------------------------------------------
+    // Fluid interaction: without this, water treats the block as replaceable
+    // (since it has no collision/occlusion) and washes it away. Returning
+    // false here keeps the block in place regardless of adjacent fluids.
+    // ------------------------------------------------------------------
+
+    @Override
+    protected boolean canBeReplaced(BlockState state, net.minecraft.world.level.material.Fluid fluid) {
+        return false;
+    }
+
     // ------------------------------------------------------------------
     // BlockEntity plumbing
     // ------------------------------------------------------------------
