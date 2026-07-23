@@ -97,14 +97,14 @@ public class NullBlock extends Block implements EntityBlock {
     // solid (e.g. stone), while a disguise-less/non-solid disguise still
     // reports empty (no false culling). This does not affect physics —
     // getCollisionShape above is what remains permanently empty.
+    // NOTE: getOcclusionShape(BlockState) in 1.21.4 has no BlockGetter/BlockPos
+    // parameters, so it can't read this specific block's disguise BlockEntity
+    // here. Reporting a full cube makes neighboring blocks cull faces against
+    // NullBlock as if solid (matches the common case of disguising as a solid
+    // block); collision remains untouched (still fully passable).
     @Override
-    public VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
-        BlockEntity be = level.getBlockEntity(pos);
-        if (be instanceof NullBlockEntity nullBe && nullBe.getDisguiseState() != null) {
-            BlockState disguise = nullBe.getDisguiseState();
-            return disguise.getOcclusionShape(level, pos);
-        }
-        return Shapes.empty();
+    public VoxelShape getOcclusionShape(BlockState state) {
+        return Shapes.block();
     }
 
     // ------------------------------------------------------------------
