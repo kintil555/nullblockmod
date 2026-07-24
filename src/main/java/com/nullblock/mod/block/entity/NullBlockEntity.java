@@ -60,25 +60,30 @@ public class NullBlockEntity extends BlockEntity {
             // Ambient occlusion for a NEIGHBOR's face is baked into that
             // neighbor's own chunk mesh when vanilla's chunk mesher reads
             // this position's occlusion (NullBlock#getOcclusionShape). That
-            // read only happens when the neighbor's section gets remeshed.
-            // level.setBlock() above only guarantees a remesh of THIS
-            // position's own section; changing the disguise here (e.g. from
-            // "no disguise" to "grass") does not by itself tell the game
-            // that neighboring sections' meshes are now stale, so a
-            // neighboring grass block keeps its old (pre-disguise) AO until
-            // something else happens to touch it. Explicitly mark every
-            // neighboring section dirty — including diagonals, since AO
-            // sampling reads the 8 blocks around each vertex, not just the
-            // 6 face-adjacent ones — so they rebuild and pick up the new
-            // occlusion state immediately, exactly like vanilla full blocks
-            // (e.g. snow layers) already do via their own setBlock calls.
-            if (level instanceof net.minecraft.client.multiplayer.ClientLevel clientLevel) {
+            // read only happens when the neighbor's render chunk gets
+            // remeshed. level.setBlock() above only guarantees a remesh of
+            // THIS position's own section — ClientLevel#setBlocksDirty (an
+            // earlier attempt at this fix) does NOT trigger a mesh rebuild
+            // either; it only updates block-destruction-progress bookkeeping.
+            // The method that actually queues a render-chunk rebuild is
+            // LevelRenderer#setBlockDirty (used internally by
+            // Level#setBlock/sendBlockUpdated for the changed position and
+            // its immediate neighbors, but NOT for diagonals). Call it
+            // explicitly for all 26 neighbors — including diagonals, since
+            // AO sampling reads the 8 blocks around each vertex — so every
+            // affected render chunk rebuilds immediately and picks up the
+            // new occlusion state, exactly like vanilla full blocks (e.g.
+            // snow layers) already do via their own setBlock calls.
+            if (level.isClientSide) {
+                net.minecraft.client.renderer.LevelRenderer levelRenderer =
+                        net.minecraft.client.Minecraft.getInstance().levelRenderer;
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dy = -1; dy <= 1; dy++) {
                         for (int dz = -1; dz <= 1; dz++) {
                             if (dx == 0 && dy == 0 && dz == 0) continue;
                             BlockPos neighbor = worldPosition.offset(dx, dy, dz);
-                            clientLevel.setBlocksDirty(neighbor, newState, newState);
+                            BlockState neighborState = level.getBlockState(neighbor);
+                            levelRenderer.setBlockDirty(neighbor, neighborState, neighborState);
                         }
                     }
                 }
