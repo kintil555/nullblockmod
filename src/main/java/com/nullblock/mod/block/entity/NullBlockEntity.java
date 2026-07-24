@@ -57,35 +57,75 @@ public class NullBlockEntity extends BlockEntity {
             level.getLightEngine().checkBlock(worldPosition);
             level.sendBlockUpdated(worldPosition, newState, newState, 3);
 
-            // Ambient occlusion for a NEIGHBOR's face is baked into that
-            // neighbor's own chunk mesh when vanilla's chunk mesher reads
-            // this position's occlusion (NullBlock#getOcclusionShape). That
-            // read only happens when the neighbor's render chunk gets
-            // remeshed. level.setBlock() above only guarantees a remesh of
-            // THIS position's own section — ClientLevel#setBlocksDirty (an
-            // earlier attempt at this fix) does NOT trigger a mesh rebuild
-            // either; it only updates block-destruction-progress bookkeeping.
-            // The method that actually queues a render-chunk rebuild is
-            // LevelRenderer#setBlockDirty (used internally by
-            // Level#setBlock/sendBlockUpdated for the changed position and
-            // its immediate neighbors, but NOT for diagonals). Call it
-            // explicitly for all 26 neighbors — including diagonals, since
-            // AO sampling reads the 8 blocks around each vertex — so every
-            // affected render chunk rebuilds immediately and picks up the
-            // new occlusion state, exactly like vanilla full blocks (e.g.
-            // snow layers) already do via their own setBlock calls.
-            if (level.isClientSide) {
-                net.minecraft.client.renderer.LevelRenderer levelRenderer =
-                        net.minecraft.client.Minecraft.getInstance().levelRenderer;
-                for (int dx = -1; dx <= 1; dx++) {
-                    for (int dy = -1; dy <= 1; dy++) {
-                        for (int dz = -1; dz <= 1; dz++) {
-                            if (dx == 0 && dy == 0 && dz == 0) continue;
-                            BlockPos neighbor = worldPosition.offset(dx, dy, dz);
-                            BlockState neighborState = level.getBlockState(neighbor);
-                            levelRenderer.setBlockDirty(neighbor, neighborState, neighborState);
-                        }
-                    }
+            // NOTE: setDisguiseState() is called from NullBlock#useItemOn
+            // on the SERVER (level.isClientSide is false there), so a
+            // level.isClientSide-guarded remesh call here would never run.
+            // The client instead learns about the new disguise later,
+            // through the ClientboundBlockEntityDataPacket this triggers,
+            // which invokes onDataPacket() below — that is where the actual
+            // client-side neighbor remesh now happens. See remeshNeighbors().
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Client-side AO fix: force neighboring render chunks to rebuild
+    // whenever this block's disguise changes, so vanilla full blocks
+    // (grass, sand, stone, etc.) sitting next to a NullBlock immediately
+    // pick up correct ambient occlusion against the new disguise instead
+    // of keeping stale (pre-disguise) shading until something else
+    // happens to touch their chunk.
+    // ------------------------------------------------------------------
+
+    @Override
+    public void onDataPacket(net.minecraft.network.Connection connection,
+                              ClientboundBlockEntityDataPacket packet,
+                              HolderLookup.Provider registries) {
+        super.onDataPacket(connection, packet, registries);
+        // super.onDataPacket() applies the packet's tag via handleUpdateTag()
+        // -> loadAdditional(), which is what actually refreshes this.disguiseState
+        // on the client. Only after that do we know the new disguise and can
+        // remesh neighbors against it.
+        remeshNeighborsForAO();
+    }
+
+    @Override
+    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
+        super.handleUpdateTag(tag, registries);
+        // Chunk (re)load / initial sync path — same reasoning as onDataPacket.
+        remeshNeighborsForAO();
+    }
+
+    /**
+     * Ambient occlusion for a NEIGHBOR's face is baked into that neighbor's
+     * own render chunk mesh when vanilla's chunk mesher reads this
+     * position's occlusion (NullBlock#getOcclusionShape). That read only
+     * happens when the neighbor's render chunk gets remeshed. Changing the
+     * disguise does not by itself invalidate a neighboring vanilla block's
+     * (already-built) mesh, so it keeps stale AO until something else
+     * touches it. ClientLevel#setBlocksDirty (an earlier attempt at this
+     * fix) does NOT queue a mesh rebuild — it only updates
+     * block-destruction-progress bookkeeping. The method that actually
+     * queues a render-chunk rebuild is LevelRenderer#setBlockDirty. Call it
+     * for all 26 neighbors — including diagonals, since AO sampling reads
+     * the 8 blocks around each vertex — so every affected render chunk
+     * rebuilds and picks up the new occlusion state, exactly like vanilla
+     * full blocks (e.g. snow layers) already do via their own setBlock
+     * calls (which internally call the same method for their 6 face
+     * neighbors).
+     */
+    private void remeshNeighborsForAO() {
+        if (level == null || !level.isClientSide) {
+            return;
+        }
+        net.minecraft.client.renderer.LevelRenderer levelRenderer =
+                net.minecraft.client.Minecraft.getInstance().levelRenderer;
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dy == 0 && dz == 0) continue;
+                    BlockPos neighbor = worldPosition.offset(dx, dy, dz);
+                    BlockState neighborState = level.getBlockState(neighbor);
+                    levelRenderer.setBlockDirty(neighbor, neighborState, neighborState);
                 }
             }
         }
