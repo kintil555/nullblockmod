@@ -123,7 +123,7 @@ public class NullBlockEntityRenderer implements BlockEntityRenderer<NullBlockEnt
     // BlockAndTintGetter/BlockGetter method, which avoids having to keep a
     // huge delegate class in sync with the interface across MC updates.
     // ------------------------------------------------------------------
-    private static net.minecraft.world.level.BlockAndTintGetter disguiseAwareView(Level realLevel) {
+    private static net.minecraft.world.level.BlockAndTintGetter disguiseAwareView(net.minecraft.world.level.Level realLevel) {
         return (net.minecraft.world.level.BlockAndTintGetter) java.lang.reflect.Proxy.newProxyInstance(
                 NullBlockEntityRenderer.class.getClassLoader(),
                 new Class<?>[]{net.minecraft.world.level.BlockAndTintGetter.class},
@@ -133,7 +133,7 @@ public class NullBlockEntityRenderer implements BlockEntityRenderer<NullBlockEnt
                             && args[0] instanceof net.minecraft.core.BlockPos pos) {
                         BlockState real = realLevel.getBlockState(pos);
                         if (real.getBlock() instanceof com.nullblock.mod.block.NullBlock) {
-                            BlockEntity be = realLevel.getBlockEntity(pos);
+                            net.minecraft.world.level.block.entity.BlockEntity be = realLevel.getBlockEntity(pos);
                             if (be instanceof NullBlockEntity nullBe && nullBe.hasDisguise()) {
                                 return nullBe.getDisguiseState();
                             }
