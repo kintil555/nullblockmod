@@ -67,14 +67,26 @@ public class NullBlockEntityRenderer implements BlockEntityRenderer<NullBlockEnt
         // which resolved to the missing-texture model (purple/black).
         BakedModel model = dispatcher.getBlockModel(stateToRender);
 
+        // checkSides=true would ask Block.shouldRenderFace() to compare OUR
+        // block (NullBlock; invisible, no real shape) against the raw
+        // neighbor BlockState. Two adjacent NullBlocks both report
+        // themselves (not their disguise) into that check, so the shared
+        // face between two disguised NullBlocks ends up double-drawn
+        // (visible seam / z-fighting) instead of culling like vanilla snow
+        // layers cull against each other. Fix: wrap the level so
+        // getBlockState() on a neighboring NullBlock returns that
+        // neighbor's DISGUISE state instead, so Block.shouldRenderFace
+        // (called internally by tesselateBlock with checkSides=true) sees
+        // disguise-vs-disguise and culls correctly in both directions.
+        net.minecraft.world.level.BlockAndTintGetter view = disguiseAwareView(blockEntity.getLevel());
+
         poseStack.pushPose();
-        // Render using the REAL level/pos so biome color (tint) and AO are
-        // sampled from actual neighbors, not a detached fake context. This
-        // gives correct grass tint per biome and correct AO shading against
-        // surrounding blocks.
+        // Render using a wrapped level/pos so biome color (tint) and AO are
+        // still sampled from actual neighbors, but face culling sees each
+        // neighboring NullBlock's disguise instead of the invisible shell.
         for (RenderType type : model.getRenderTypes(stateToRender, blockEntity.getLevel().random, net.minecraftforge.client.model.data.ModelData.EMPTY)) {
             dispatcher.getModelRenderer().tesselateBlock(
-                    blockEntity.getLevel(),
+                    view,
                     model,
                     stateToRender,
                     blockEntity.getBlockPos(),
@@ -97,5 +109,42 @@ public class NullBlockEntityRenderer implements BlockEntityRenderer<NullBlockEnt
     @Override
     public int getViewDistance() {
         return 64;
+    }
+
+    // ------------------------------------------------------------------
+    // Culling fix: wraps the real level in a dynamic proxy so that
+    // BlockAndTintGetter#getBlockState(pos), when called by vanilla's
+    // Block.shouldRenderFace() during tesselateBlock(checkSides=true),
+    // returns a neighboring NullBlock's DISGUISE state instead of the
+    // invisible NullBlock state itself. Every other method (lighting,
+    // biome tint, block entities, fluid state, etc.) is forwarded
+    // untouched to the real level, so AO/tint/lighting stay accurate.
+    // A java.lang.reflect.Proxy is used instead of hand-implementing every
+    // BlockAndTintGetter/BlockGetter method, which avoids having to keep a
+    // huge delegate class in sync with the interface across MC updates.
+    // ------------------------------------------------------------------
+    private static net.minecraft.world.level.BlockAndTintGetter disguiseAwareView(Level realLevel) {
+        return (net.minecraft.world.level.BlockAndTintGetter) java.lang.reflect.Proxy.newProxyInstance(
+                NullBlockEntityRenderer.class.getClassLoader(),
+                new Class<?>[]{net.minecraft.world.level.BlockAndTintGetter.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getBlockState")
+                            && args != null && args.length == 1
+                            && args[0] instanceof net.minecraft.core.BlockPos pos) {
+                        BlockState real = realLevel.getBlockState(pos);
+                        if (real.getBlock() instanceof com.nullblock.mod.block.NullBlock) {
+                            BlockEntity be = realLevel.getBlockEntity(pos);
+                            if (be instanceof NullBlockEntity nullBe && nullBe.hasDisguise()) {
+                                return nullBe.getDisguiseState();
+                            }
+                            // No disguise: treat as air so it never
+                            // falsely culls a neighbor's face.
+                            return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+                        }
+                        return real;
+                    }
+                    return method.invoke(realLevel, args);
+                }
+        );
     }
 }
